@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Просмотр Тайлов</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: flex-start; /* Размещаем контент слева */
+            align-items: flex-start; 
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* Выравниваем содержимое по левому краю */
+        }
+
+        h1 {
+            margin-left: 10px;
+        }
+
+        #tile-container {
+            display: grid;
+            grid-template-columns: repeat(18, 50px); /* 4 колонки, уменьшенные */
+            grid-template-rows: repeat(18, 50px); /* 4 строки, уменьшенные */
+            gap: 2px;
+            justify-content: flex-start;
+            border: 2px solid #ddd;
+            padding: 5px;
+        }
+
+        .tile {
+            width: 50px; /* Уменьшенные размеры тайлов */
+            height: 50px;
+            object-fit: cover;
+            cursor: pointer;
+            border: 1px solid #ccc;
+        }
+
+        #full-image-container {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+        }
+
+        #full-image {
+            max-width: 90%;
+            max-height: 90%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <h1>Просмотр Тайлов</h1>
+        <div id="tile-container"></div>
+    </div>
+
+    <div id="full-image-container" onclick="this.style.display='none'">
+        <img id="full-image">
+    </div>
+
+    <script>
+        async function loadTiles() {
+            const response = await fetch('/tiles');
+            const data = await response.json();
+
+            const container = document.getElementById('tile-container');
+            container.innerHTML = "";
+
+            const rows = 18; // Количество строк
+            const cols = 18; // Количество колонок
+
+            data.tiles.forEach((tile, index) => {
+                const img = document.createElement('img');
+                img.src = `/tiles/${tile}`;
+                img.className = 'tile';
+
+                const row = Math.floor(index / cols);
+                const col = index % cols;
+                img.style.gridRow = row + 1;
+                img.style.gridColumn = col + 1;
+
+                img.onclick = () => showFullImage(img.src);
+                container.appendChild(img);
+            });
+        }
+
+        function showFullImage(src) {
+            const fullImageContainer = document.getElementById('full-image-container');
+            document.getElementById('full-image').src = src;
+            fullImageContainer.style.display = 'flex';
+        }
+
+        loadTiles();
+    </script>
+
+</body>
+</html>
