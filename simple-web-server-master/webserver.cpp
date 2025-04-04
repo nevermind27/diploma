@@ -177,6 +177,7 @@ int serve_socket(int sock_fd, const char *webserver_root) {
     } else if (nbytes > 0) {
         http_response_msg rsp;
         parse_request(buf, rsp, webserver_root);
+        handle_request(rsp, webserver_root);
         write_response(sock_fd, rsp);
 
         shutdown(sock_fd, SHUT_RDWR);

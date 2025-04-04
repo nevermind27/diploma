@@ -1,6 +1,4 @@
-//
-// Created by valdemar on 17.07.16.
-//
+
 #include "optparse.h"
 
 #include <cstdio>
