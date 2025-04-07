@@ -3,24 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Просмотр Sentinel-2</title>
+    <title>Система загрузки и просмотра данных</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
             background-color: #f5f5f5;
+            color: #333;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        /* Стили для загрузки файлов */
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #2980b9;
+            background-color: #f7f9fc;
+        }
+
+        .upload-area.dragover {
+            border-color: #27ae60;
+            background-color: #f0fff4;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #3498db;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: #95a5a6;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress {
+            width: 0%;
+            height: 100%;
+            background-color: #2ecc71;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .server-select, .chunk-size-select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        /* Стили для просмотра Sentinel-2 */
         .viewer-section {
             display: grid;
             grid-template-columns: 1fr 300px;
             gap: 20px;
+            margin-top: 30px;
         }
 
         #tile-container {
@@ -79,13 +195,6 @@
             margin-bottom: 10px;
         }
 
-        .status {
-            margin-top: 20px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 4px;
-        }
-
         #full-image-container {
             display: none;
             position: fixed;
@@ -104,55 +213,111 @@
             max-height: 90%;
         }
 
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 10px;
+        /* Вкладки */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
         }
 
-        .progress {
-            width: 0%;
-            height: 100%;
-            background-color: #4CAF50;
-            transition: width 0.3s ease;
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+
+        .tab.active {
+            background-color: white;
+            border-color: #ddd;
+            border-bottom-color: white;
+            margin-bottom: -1px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Просмотр Sentinel-2</h1>
+        <h1>Система загрузки и просмотра данных</h1>
         
-        <div class="viewer-section">
-            <div id="tile-container"></div>
+        <div class="tabs">
+            <div class="tab active" data-tab="upload">Загрузка файлов</div>
+            <div class="tab" data-tab="viewer">Просмотр Sentinel-2</div>
+        </div>
+        
+        <div class="tab-content active" id="upload-tab">
+            <h2>Загрузка файлов</h2>
             
-            <div class="controls">
-                <div class="band-selector">
-                    <h3>Выбор спектрального канала</h3>
-                    <select id="band-select" onchange="changeBand()">
-                        <option value="B01">B01 - Coastal aerosol (443nm)</option>
-                        <option value="B02">B02 - Blue (490nm)</option>
-                        <option value="B03">B03 - Green (560nm)</option>
-                        <option value="B04">B04 - Red (665nm)</option>
-                        <option value="B05">B05 - Red Edge 1 (705nm)</option>
-                        <option value="B06">B06 - Red Edge 2 (740nm)</option>
-                        <option value="B07">B07 - Red Edge 3 (783nm)</option>
-                        <option value="B08">B08 - NIR (842nm)</option>
-                        <option value="B09">B09 - Water vapour (940nm)</option>
-                        <option value="B10">B10 - SWIR-Cirrus (1375nm)</option>
-                        <option value="B11">B11 - SWIR 1 (1610nm)</option>
-                        <option value="B12">B12 - SWIR 2 (2190nm)</option>
-                        <option value="TCI">TCI - True Color Image</option>
-                    </select>
+            <select id="serverSelect" class="server-select">
+                <option value="http://127.0.0.1:8080">Сервер 1 (localhost:8080)</option>
+                <option value="http://127.0.0.1:8081">Сервер 2 (localhost:8081)</option>
+            </select>
+
+            <select id="chunkSizeSelect" class="chunk-size-select">
+                <option value="1048576">Размер чанка: 1 MB</option>
+                <option value="2097152">Размер чанка: 2 MB</option>
+                <option value="4194304">Размер чанка: 4 MB</option>
+                <option value="8388608">Размер чанка: 8 MB</option>
+            </select>
+
+            <div class="upload-area" id="dropZone">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Перетащите файл сюда или нажмите для выбора</div>
+                <div class="upload-hint">Поддерживаются файлы любого размера</div>
+                <input type="file" id="fileInput">
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
                 </div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+
+            <div class="status" id="status"></div>
+        </div>
+        
+        <div class="tab-content" id="viewer-tab">
+            <h2>Просмотр Sentinel-2</h2>
+            
+            <div class="viewer-section">
+                <div id="tile-container"></div>
                 
-                <div class="status">
-                    <h3>Статус загрузки</h3>
-                    <p id="loading-status">Готов к загрузке</p>
-                    <div class="progress-bar">
-                        <div class="progress" id="loading-progress"></div>
+                <div class="controls">
+                    <div class="band-selector">
+                        <h3>Выбор спектрального канала</h3>
+                        <select id="band-select" onchange="changeBand()">
+                            <option value="B01">B01 - Coastal aerosol (443nm)</option>
+                            <option value="B02">B02 - Blue (490nm)</option>
+                            <option value="B03">B03 - Green (560nm)</option>
+                            <option value="B04">B04 - Red (665nm)</option>
+                            <option value="B05">B05 - Red Edge 1 (705nm)</option>
+                            <option value="B06">B06 - Red Edge 2 (740nm)</option>
+                            <option value="B07">B07 - Red Edge 3 (783nm)</option>
+                            <option value="B08">B08 - NIR (842nm)</option>
+                            <option value="B09">B09 - Water vapour (940nm)</option>
+                            <option value="B10">B10 - SWIR-Cirrus (1375nm)</option>
+                            <option value="B11">B11 - SWIR 1 (1610nm)</option>
+                            <option value="B12">B12 - SWIR 2 (2190nm)</option>
+                            <option value="TCI">TCI - True Color Image</option>
+                        </select>
+                    </div>
+                    
+                    <div class="status">
+                        <h3>Статус загрузки</h3>
+                        <p id="loading-status">Готов к загрузке</p>
+                        <div class="progress-bar">
+                            <div class="progress" id="loading-progress"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -164,6 +329,161 @@
     </div>
 
     <script>
+        // Переключение вкладок
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Убираем активный класс у всех вкладок
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Добавляем активный класс выбранной вкладке
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+                
+                // Если открыли вкладку просмотра, загружаем тайлы
+                if (tab.dataset.tab === 'viewer') {
+                    loadTiles();
+                }
+            });
+        });
+
+        // Код для загрузки файлов
+        const CHUNK_SIZE = 1048576; // 1MB по умолчанию
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const status = document.getElementById('status');
+        const serverSelect = document.getElementById('serverSelect');
+        const chunkSizeSelect = document.getElementById('chunkSizeSelect');
+
+        // Обработчики событий для drag & drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        async function handleFile(file) {
+            const serverUrl = serverSelect.value;
+            const chunkSize = parseInt(chunkSizeSelect.value);
+            const totalChunks = Math.ceil(file.size / chunkSize);
+            
+            try {
+                // Инициализация загрузки
+                const uploadId = await initUpload(serverUrl, file.name, file.size, totalChunks);
+                
+                // Показываем прогресс
+                progressContainer.style.display = 'block';
+                status.style.display = 'none';
+                
+                // Загружаем чанки
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * chunkSize;
+                    const end = Math.min(start + chunkSize, file.size);
+                    const chunk = file.slice(start, end);
+                    
+                    await uploadChunk(serverUrl, uploadId, i, chunk);
+                    
+                    // Обновляем прогресс
+                    const progress = ((i + 1) / totalChunks) * 100;
+                    progressBar.style.width = `${progress}%`;
+                    progressText.textContent = `${Math.round(progress)}%`;
+                }
+                
+                // Завершаем загрузку
+                await finalizeUpload(serverUrl, uploadId);
+                
+                // Показываем успех
+                showStatus('Файл успешно загружен!', 'success');
+                
+            } catch (error) {
+                showStatus(`Ошибка: ${error.message}`, 'error');
+            }
+        }
+
+        async function initUpload(serverUrl, fileName, totalSize, totalChunks) {
+            const response = await fetch(`${serverUrl}/init-upload`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    fileName,
+                    uploadId: `upload_${Date.now()}`,
+                    totalChunks,
+                    totalSize
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Ошибка инициализации загрузки');
+            }
+
+            const data = await response.json();
+            return data.uploadId;
+        }
+
+        async function uploadChunk(serverUrl, uploadId, chunkIndex, chunk) {
+            const formData = new FormData();
+            formData.append('uploadId', uploadId);
+            formData.append('chunkIndex', chunkIndex);
+            formData.append('chunk', chunk);
+
+            const response = await fetch(`${serverUrl}/upload-chunk`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка загрузки чанка ${chunkIndex}`);
+            }
+        }
+
+        async function finalizeUpload(serverUrl, uploadId) {
+            const response = await fetch(`${serverUrl}/finalize-upload`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ uploadId })
+            });
+
+            if (!response.ok) {
+                throw new Error('Ошибка завершения загрузки');
+            }
+        }
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        // Код для просмотра Sentinel-2
         let currentBand = 'B04';
         let loadedTiles = new Set();
 
@@ -262,9 +582,6 @@
             document.getElementById('full-image').src = src;
             fullImageContainer.style.display = 'flex';
         }
-
-        // Инициализация при загрузке страницы
-        loadTiles();
     </script>
 </body>
 </html>
